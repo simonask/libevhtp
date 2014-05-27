@@ -680,6 +680,17 @@ int evhtp_unset_all_hooks(evhtp_hooks_t ** hooks);
  */
 int evhtp_bind_socket(evhtp_t * htp, const char * addr, uint16_t port, int backlog);
 
+/**
+ * @brief bind to an accepting socket.
+ *
+ * @param htp
+ * @param sockfd
+ * @param backlog
+ *
+ * @return
+*/
+int evhtp_accept_socket(evhtp_t* htp, evutil_socket_t sockfd, int backlog);
+
 
 /**
  * @brief stops the listening socket.

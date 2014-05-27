@@ -2763,6 +2763,45 @@ evhtp_bind_sockaddr(evhtp_t * htp, struct sockaddr * sa, size_t sin_len, int bac
 }
 
 int
+evhtp_accept_socket(evhtp_t* htp, evutil_socket_t sock, int backlog) {
+    #ifndef WIN32
+    signal(SIGPIPE, SIG_IGN);
+#endif
+
+    htp->server = evconnlistener_new(htp->evbase, _evhtp_accept_cb, (void *)htp,
+                                          LEV_OPT_THREADSAFE | LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+                                          backlog, sock);
+    if (!htp->server) {
+        return -1;
+    }
+
+#ifdef USE_DEFER_ACCEPT
+    {
+        int             one = 1;
+
+        setsockopt(sock, IPPROTO_TCP, TCP_DEFER_ACCEPT, &one, (ev_socklen_t)sizeof(one));
+        setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &one, (ev_socklen_t)sizeof(one));
+    }
+#endif
+
+#ifndef EVHTP_DISABLE_SSL
+    if (htp->ssl_ctx != NULL) {
+        /* if ssl is enabled and we have virtual hosts, set our servername
+         * callback. We do this here because we want to make sure that this gets
+         * set after all potential virtualhosts have been set, not just after
+         * ssl_init.
+         */
+        if (TAILQ_FIRST(&htp->vhosts) != NULL) {
+            SSL_CTX_set_tlsext_servername_callback(htp->ssl_ctx,
+                                                   _evhtp_ssl_servername);
+        }
+    }
+#endif
+
+    return 0;
+}
+
+int
 evhtp_bind_socket(evhtp_t * htp, const char * baddr, uint16_t port, int backlog) {
     struct sockaddr_in  sin;
     struct sockaddr_in6 sin6;
